@@ -13,18 +13,18 @@ from datetime import datetime
 import argparse
 
 dbg=False
-sim=False           #?
+sim=False
 
 global queueLock    #?
 
 def debuginfo(msg):     #定义一个debuginfo函数
     if dbg:             #if Falese 下面的语句不执行
-        sys.stderr.write(str(datetime.now())+" : %s \n" % msg)
+        sys.stderr.write(str(datetime.now())+" : %s \n" % msg)  #重定向标准错误信息,将信息记录到文件中
 
 def info(msg):
     sys.stderr.write(str(datetime.now())+" : %s \n" % msg)
 
-def retrySimpleCmd(func):
+def retrySimpleCmd(func):           #定义一个装饰器 给被装饰的函数增加功能
     def retried_func(*args, **kwargs):
         # start from 0
         MAX_TRIES = 2
@@ -35,7 +35,7 @@ def retrySimpleCmd(func):
             debuginfo("try execute command at "+str(tries+1)+" time")
             return_code, output = func(*args, **kwargs)
             if return_code > 0 and tries < MAX_TRIES:
-                debuginfo("simple command return code abnormal, with code %d and error msg is %s "
+                debuginfo("simple command return code abnormal, with code %d and error msg is %s "  #if....debuginfo是simple command...
                           % (return_code,output))
                 tries += 1
                 time.sleep(RETRY_INTERVAL)
@@ -44,25 +44,25 @@ def retrySimpleCmd(func):
 
             if return_code > 0 and tries >= MAX_TRIES:
                 debuginfo("return code is %s \n" % str(return_code))
-                raise retryException("Max retries reached, still no success!")
+                raise retryException("Max retries reached, still no success!")          #要是经过自增的tries>MAX_TRIES,则显示"Max retries reached, still no success!"
         return return_code, output
     return retried_func
 
 @retrySimpleCmd
-def SimpleCmd(CmdStr):
-    status=0
+def SimpleCmd(CmdStr):  #什么是CmdStr?
+    status=0            #这个值的目的是什么?
     output=None
 
-    if not sim:
-        status, output = commands.getstatusoutput(CmdStr)
+    if not sim:     #if not False
+        status, output = commands.getstatusoutput(CmdStr)   #获得到程序执行的返回值和输出 用os.popen()执行命令CmdStr, 然后返回两个元素的status, result, 这样返回结果里面就会包含标准输出和标准错误.
     else:
-        output = (("In command simulation mode, just showing full command is %s \n") % CmdStr)
-        debuginfo(output)
+        output = (("In command simulation mode, just showing full command is %s \n") % CmdStr)  #否则输出In command simulation mode, just showing full command is...
+        debuginfo(output)       #把output作为参数传递给debuginfo
         status=0
     return status, output
 
-class nodestatus(object):
-    def __init__(self):
+class nodestatus(object):   #节点状况的类
+    def __init__(self):     #初始化了下面的属性
         self.ipconnectivity="NA"
         self.ipmiaccountstatus="NA"
         self.blade=None
@@ -85,8 +85,8 @@ class nodestatus(object):
         self.opstatus="NA"
         self.optype="NA"
 
-def fetchbusinfo(blade, nicnpname):
-    return blade.nic_assignment[nicnpname]
+def fetchbusinfo(blade, nicnpname):         #定义函数,里面两个参数
+    return blade.nic_assignment[nicnpname]  #返回的是节点的网卡地址
 
 
 def createNodesArray(config="/mnt/cee_config/config.yaml", tgtnics=None):
