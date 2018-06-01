@@ -89,12 +89,12 @@ def fetchbusinfo(blade, nicnpname):         #定义函数,里面两个参数
     return blade.nic_assignment[nicnpname]  #返回的是节点的网卡地址
 
 
-def createNodesArray(config="/mnt/cee_config/config.yaml", tgtnics=None):
+def createNodesArray(config="/mnt/cee_config/config.yaml", tgtnics=None):    #定义创建节点组的类
     res_cfg = (ConfigResourceManager.get_instance(
-        config_yaml_path=config).resource_cfg)
-    nodes=[]
-    for shelf in res_cfg.shelves:
-        for blade in shelf.blades:
+        config_yaml_path=config).resource_cfg)      #单例模式,返回的是将config赋值给config.yaml路径的resoursce_cfg属性,这个真不知道返回的是啥
+    nodes=[]                                        #设置一个空列表nodes
+    for shelf in res_cfg.shelves:                  #循环遍历res_cfg.shelves ,返回nodes
+        for blade in shelf.blades:                 #循环遍历shelf.blades
             node=nodestatus()
             node.blade=blade
             node.shelf=shelf
@@ -116,21 +116,21 @@ def createNodesArray(config="/mnt/cee_config/config.yaml", tgtnics=None):
             node.storage.append(fetchbusinfo(blade,"storage1"))
     return nodes
 
-class InfoNotFoundException(Exception):
+class InfoNotFoundException(Exception):         #信息没找到的例外情况
     def __init__(self, msg):
         self.msg = msg
 
     def __str__(self):
         return repr(self.msg)
 
-class TransferException(Exception):
+class TransferException(Exception):             #各种能够错误信息的定义
     def __init__(self, msg):
         self.msg = msg
 
     def __str__(self):
         return repr(self.msg)
 
-class DependencyNotFoundException(Exception):
+class DependencyNotFoundException(Exception):       #各种错误信息的定义.
     def __init__(self, msg):
         self.msg = msg
 
@@ -138,18 +138,18 @@ class DependencyNotFoundException(Exception):
         return repr(self.msg)
 
 
-class envchecker(object):
+class envchecker(object):                               #环境检查
 
-    def __init__(self, config='/mnt/cee_config/config.yaml',tgtnics=None):
+    def __init__(self, config='/mnt/cee_config/config.yaml',tgtnics=None):      #初始化,设置默认参数
         self.configfile=config
         self.nodes=createNodesArray(config,tgtnics)
-        self.toollist=["./runipmicommand.py","/usr/bin/hwres"]
+        self.toollist=["./runipmicommand.py","/usr/bin/hwres"]          #需要依赖另一个脚本
         self.tool="/usr/bin/hwres"
         #self.tool="/usr/bin/hwres"
 
     def checkexistence(self):
         for toolpath in self.toollist:
-            if os.path.isfile(toolpath):
+            if os.path.isfile(toolpath):    #如果是一个存在的文件,但是咱们系统实际上没有这个文件
                 self.tool=toolpath
                 return True
         return False
@@ -169,7 +169,7 @@ class envchecker(object):
         status, response=SimpleCmd(ipmicmd)
         return status, response
 
-    def _createscript(self, filename):
+    def _createscript(self, filename):              #注释掉了?
         scriptstr=r"""#!/bin/bash
 
 iflist=$(ip a | grep -E "[0-9]+: eth[0-9]+:.*" | awk -F":| " '{print $3}')
