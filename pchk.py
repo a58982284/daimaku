@@ -49,12 +49,12 @@ def retrySimpleCmd(func):           #定义一个装饰器 给被装饰的函数
     return retried_func
 
 @retrySimpleCmd
-def SimpleCmd(CmdStr):  #什么是CmdStr?
+def SimpleCmd(CmdStr):  #什么是CmdStr?  是接受checkbmcipconnectivity函数的ippingcmd作为参数
     status=0            #这个值的目的是什么?
     output=None
 
     if not sim:     #if not False
-        status, output = commands.getstatusoutput(CmdStr)   #获得到程序执行的返回值和输出 用os.popen()执行命令CmdStr, 然后返回两个元素的status, result, 这样返回结果里面就会包含标准输出和标准错误.
+        status, output = commands.getstatusoutput(CmdStr)   #获得到程序执行的返回值(状态码)和输出 用os.popen()执行命令CmdStr(下面的函数会传递过来), 然后返回两个元素的status, result, 这样返回结果里面就会包含标准输出和标准错误.
     else:
         output = (("In command simulation mode, just showing full command is %s \n") % CmdStr)  #否则输出In command simulation mode, just showing full command is...
         debuginfo(output)       #把output作为参数传递给debuginfo
@@ -155,21 +155,21 @@ class envchecker(object):                               #环境检查
         return False
 
     # requires objects, not the id string.
-    def checkbmcipconnectivity(self,blade):
-        ipconnectivitytpl="fping -c 1 -t 50 {ip}"
-        ippingcmd=ipconnectivitytpl.format(ip=blade.ip)
-        status, response=SimpleCmd(ippingcmd)
+    def checkbmcipconnectivity(self,blade):         #检查BMC是否连接
+        ipconnectivitytpl="fping -c 1 -t 50 {ip}"#-c ping每个目标的次数是1 -t 单个目标的超时时间是50 后面接ip地址
+        ippingcmd=ipconnectivitytpl.format(ip=blade.ip) #和blade的ip合并 形成一条标准的fping命令
+        status, response=SimpleCmd(ippingcmd)       #把ippingcmd这个命令作为参数传递给SimpleCmd,并将函数的返回值传递给respense,同时获得程序执行的状态码
         return status, response
 
-    def checkbmcipmiaccount(self,blade):
+    def checkbmcipmiaccount(self,blade):            #检查ipmi的账户
         command="fru print 0"
-        ipmicmdtpl = "ipmitool -H {host} -I lanplus -U {user} -P {password} {command}"
-        ipmicmd=ipmicmdtpl.format(host=blade.ip,user=blade.user,password=blade.password,
+        ipmicmdtpl = "ipmitool -H {host} -I lanplus -U {user} -P {password} {command}"  #查看服务器的FRU信息 部件更换号, 现场可更换单元厂商为了节省成本，把设备分成多个FRU，大到power supply，小到fan之类的。直接更换而不修，所以想更换零件先看看它是不是fru。如果设备上没有表示fru，那么有part number就是FRU。
+        ipmicmd=ipmicmdtpl.format(host=blade.ip,user=blade.user,password=blade.password,        #和blade的ip blade的user 和password合并,形成标准的ipmitool命令.
                                   command=command)
-        status, response=SimpleCmd(ipmicmd)
+        status, response=SimpleCmd(ipmicmd)     #同161行的意思一样
         return status, response
 
-    def _createscript(self, filename):              #注释掉了?
+    def _createscript(self, filename):
         scriptstr=r"""#!/bin/bash
 
 iflist=$(ip a | grep -E "[0-9]+: eth[0-9]+:.*" | awk -F":| " '{print $3}')
@@ -181,33 +181,33 @@ for ifname in $iflist; do
         macaddr=$(ip link show $ifname | awk '/link/ { print $2}')
         echo "$ifname,$macaddr $businfo"
 done"""
-        with open(filename, "w") as text_file:
-            text_file.write(scriptstr)
+        with open(filename, "w") as text_file:              #打开文件
+            text_file.write(scriptstr)                       #写入scriptstr
 
-    def gettoolname(self):
-        if re.search("runipmicommand", self.tool):
-            if os.access(self.tool, os.X_OK):
+    def gettoolname(self):                              #?
+        if re.search("runipmicommand", self.tool):  #re.search会在给定字符串中寻找第一个匹配给定正则表达式的子字符串。函数的返回值：如果查找到则返回查找到的值，否则返回为None。
+            if os.access(self.tool, os.X_OK):       #self.tool="/usr/bin/hwres"
                 return self.tool
             else:
                 return "python "+self.tool
         return self.tool
 
-    def _gettargetnip(self,blade):
-        if self.checkexistence():
+    def _gettargetnip(self,blade):      #定义一个私有方法 获得目标的nip?SN?
+        if self.checkexistence():       #ture or false
             # get serial number from shelf id and blade id
-            toolname=self.gettoolname()
-            debuginfo("the toolname is %s" % toolname)
+            toolname=self.gettoolname() #拿到一个文件名
+            debuginfo("the toolname is %s" % toolname)      #debuginfo
             cmdtpl="{tool} {config} {shelf} {blade} {cmd}"
-            GETSN=cmdtpl.format(tool=toolname, config=self.configfile, shelf=blade.shelf_id, blade=blade.blade_id, cmd="getsn")
-            debuginfo("the serial number access command is %s" % GETSN)
-            status, response=SimpleCmd(GETSN)
-            if status==0:
+            GETSN=cmdtpl.format(tool=toolname, config=self.configfile, shelf=blade.shelf_id, blade=blade.blade_id, cmd="getsn") #拼接成一条命令
+            debuginfo("the serial number access command is %s" % GETSN)     #debuginfo
+            status, response=SimpleCmd(GETSN)                   #把GETSN这个命令作为参数传递给SimpleCmd,并将函数的返回值传递给respense,同时获得程序执行的状态码
+            if status==0:                                       #状态码是0
                 SN=response
             else:
-                raise InfoNotFoundException("Serial Number not found for shelf %d, blade %d" % (blade.shelf_id, blade.blade_id))
+                raise InfoNotFoundException("Serial Number not found for shelf %d, blade %d" % (blade.shelf_id, blade.blade_id))    #返回异常信息
 
-            # get node ip from serial number
-            GETNIP=cmdtpl.format(tool=toolname, config=self.configfile, shelf=blade.shelf_id, blade=blade.blade_id, cmd=("getnip %s" % SN))
+            # get node ip from serial number    #获得node ip
+            GETNIP=cmdtpl.format(tool=toolname, config=self.configfile, shelf=blade.shelf_id, blade=blade.blade_id, cmd=("getnip %s" % SN)) #cmdtpl="{tool} {config} {shelf} {blade} {cmd}"
             debuginfo(" the nip command is %s" % GETNIP )
             status, response = SimpleCmd(GETNIP)
             if status==0:
@@ -219,7 +219,7 @@ done"""
                     "Node IP not found for shelf %d, blade %d" % (blade.shelf_id, blade.blade_id))
 
     def accessbusinfo(self,blade):
-        if self.checkexistence():
+        if self.checkexistence():   #ture or false
             NIP=self._gettargetnip(blade)
             # generate embeded script
             scriptfilename = "/tmp/fetchPCIAddr.sh"
