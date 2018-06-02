@@ -222,31 +222,31 @@ done"""
         if self.checkexistence():   #ture or false
             NIP=self._gettargetnip(blade)
             # generate embeded script
-            scriptfilename = "/tmp/fetchPCIAddr.sh"
-            self._createscript(scriptfilename)
+            scriptfilename = "/tmp/fetchPCIAddr.sh"     #.sh脚本文件
+            self._createscript(scriptfilename)  #往脚本里添加(写入)_createscript函数的内容
 
-            # transfer script to target node
-            transfercmdtpl="scp -q {src} {dest}"
-            transfercmd=transfercmdtpl.format(src=scriptfilename,dest="root@"+NIP+":"+scriptfilename)
-            status,response=SimpleCmd(transfercmd)
-            if status!=0:
+            # transfer script to target node    #转移脚本到目标node
+            transfercmdtpl="scp -q {src} {dest}"    #复制文件,不显示进度条
+            transfercmd=transfercmdtpl.format(src=scriptfilename,dest="root@"+NIP+":"+scriptfilename)   #组成一个完成的复制文件到dest变量目录下的命令
+            status,response=SimpleCmd(transfercmd)      #交给simplecmd去执行,并返回状态码
+            if status!=0:                               #出问题的情况
                 raise TransferException("File transferring has problem")
 
-            # execute the script to fetch specified info
-            remoteexeccmdtpl="ssh -q {ip} {cmd}"
+            # execute the script to fetch specified info       #执行脚本,取得特殊的数据?这个脚本的用途是什么呢?
+            remoteexeccmdtpl="ssh -q {ip} {cmd}"            #远程登录,执行ssh -q NIP bash /tmp/fetchPCIAddr.sh
             remotecmd=remoteexeccmdtpl.format(ip=NIP,cmd=("bash %s" % scriptfilename))
-            status, response=SimpleCmd(remotecmd)
+            status, response=SimpleCmd(remotecmd)       #交给simplecmd去执行,并返回状态码
         else:
-            raise DependencyNotFoundException("system is not dpia patched, this tool require system to be dpia patched.")
+            raise DependencyNotFoundException("system is not dpia patched, this tool require system to be dpia patched.")   #异常状况
         return status, response
 
-    def serverinfo(self,blade):
-        toolname=self.gettoolname()
-        if self.checkexistence():
-            cmdtpl="{tool} {config} {shelf} {blade} {cmd}"
-            OPE=cmdtpl.format(tool=toolname, config=self.configfile, shelf=blade.shelf_id, blade=blade.blade_id, cmd='chkhwi')
+    def serverinfo(self,blade):                 #获取服务器信息?
+        toolname=self.gettoolname()             #187-193行
+        if self.checkexistence():               #ture or false 如果文件存在的话
+            cmdtpl="{tool} {config} {shelf} {blade} {cmd}"  #组成命令 ,config指向.yaml
+            OPE=cmdtpl.format(tool=toolname, config=self.configfile, shelf=blade.shelf_id, blade=blade.blade_id, cmd='chkhwi')#组成命令,不理解什么命令
             debuginfo("OPE command is %s" % OPE )
-            status, response=SimpleCmd(OPE)
+            status, response=SimpleCmd(OPE)     #执行命令并返回状态码
             if status == 0:
                 return status, response
             else:
@@ -257,32 +257,32 @@ done"""
                 "system is not dpia patched, this tool require system to be dpia patched. " )
 
 
-    def _getnicname(self, blade, busid):
-        return blade.businfo[busid]
+    def _getnicname(self, blade, busid):#busid?即可以是物理总线（如PCI、I2C总线）的抽象，也可以是出于设备驱动模型架构需要而定义的虚拟的“platform”总线。一个符合Linux设备驱动模型的device或device_driver必须挂靠在一个bus上，无论这个bus是物理的还是虚拟的
+        return blade.businfo[busid]     #
 
-    def disablenic(self,blade):
-        status, response=self.accessbusinfo(blade)
+    def disablenic(self,blade):         #禁掉网卡?
+        status, response=self.accessbusinfo(blade)#accessbusinfo的用途不清楚
         if status == 0:
-            collectbusinfo(blade, response)
-        NIP=self._gettargetnip(blade)
+            collectbusinfo(blade, response)     #采集到businfo?
+        NIP=self._gettargetnip(blade)           #获得目标的nip
 
-        for nic in blade.tgtnics:
+        for nic in blade.tgtnics:               #循环遍历blade.tgtnics 猜是网卡信息?
             nicname=self._getnicname(blade,nic)
             cmdtpl="ssh {ip} ip link dev {nic} down"
-            remotecmd=cmdtpl.format(ip=NIP, nic=nicname)
+            remotecmd=cmdtpl.format(ip=NIP, nic=nicname)    #组合命令
             blade.optype="disablenic"
             status, response=SimpleCmd(remotecmd)
-            if status !=0:
+            if status !=0:                              #异常
                 blade.opstatus="failed"
                 raise RemoteExecutionException("Disable nic %s on shelf %s blade %s failed!" %
                                                (nicname, blade.shelf_id, blade.blade_id))
             else:
                 blade.opstatus="successful"
-                info("nic %s (%s) on blade shelf %s blade %s now enabled" %
+                info("nic %s (%s) on blade shelf %s blade %s now enabled" %     #shelf_id是啥查一下
                      (nic, nicname, blade.shelf_id, blade.blade_id))
                 return status, response
 
-    def enablenic(self,blade):
+    def enablenic(self,blade):      #对应的激活网卡nic
         status, response = self.accessbusinfo(blade)
         if status == 0:
             collectbusinfo(blade, response)
@@ -303,7 +303,7 @@ done"""
                      (nic, nicname, blade.shelf_id, blade.blade_id))
                 return status, response
 
-    def flashnic(self,blade):
+    def flashnic(self,blade):       #刷新网卡?
         status, response = self.accessbusinfo(blade)
         if status == 0:
             collectbusinfo(blade, response)
@@ -320,10 +320,10 @@ done"""
         blade.opstatus="successful"
         return True, None
 
-    def enableuid(self,blade, timer):
+    def enableuid(self,blade, timer):   #激活uid uid是啥
         cmdtpl = "ipmitool -H {ip} -U {user} -P {passwd} -I lanplus {cmd}"
         #chassis identify on
-        oncmd='chassis identify '+str(timer)
+        oncmd='chassis identify '+str(timer)        #这个命令不清楚什么意思
         #offcmd="0"
         #default="15"
         uidon=cmdtpl.format(ip=blade.ip, user=blade.user, passwd=blade.password, cmd=oncmd)
@@ -338,7 +338,7 @@ done"""
             raise RemoteExecutionException(
                 "Light UID LED for node in shelf %s, blade %s failed!" % (blade.shelf_id, blade.blade_id))
 
-    def disableuid(self,blade):
+    def disableuid(self,blade):     #关闭uid
         cmdtpl = "ipmitool -H {ip} -U {user} -P {passwd} -I lanplus {cmd}"
         #chassis identify on
         #oncmd='force'
