@@ -82,7 +82,7 @@ class nodestatus(object):   #节点状况的类
         self.data=[]
         self.storage=[]
         self.tgtnics=[]
-        self.opstatus="NA"
+        self.opstatus="NA"  #初始'NA'
         self.optype="NA"
 
 def fetchbusinfo(blade, nicnpname):         #定义函数,里面两个参数
@@ -520,26 +520,26 @@ class worker(threading.Thread):
         self.envchecker=envchecker
         self.tasklist=tasklist
 
-    def _matchtask(self,taskname):
+    def _matchtask(self,taskname):          #判断任务名是否在任务清单中,是返回true,否则false
         if taskname in self.tasklist:
             return True
         return False
 
     def processing(self):
         try:
-            while not worker.exitFlag:
+            while not worker.exitFlag:      #取反逻辑运算 当worker.exitFlag不为0时
                 # timeout=0.05 for tune application not use up all cpu tick to access queue
                 # this is non-blocking structure.
-                node=self.qin.get(timeout=0.05)
+                node=self.qin.get(timeout=0.05) #
                 if self._matchtask("ipconn"):
-                    result, response=self.envchecker.checkbmcipconnectivity(node)
+                    result, response=self.envchecker.checkbmcipconnectivity(node)   #检查BMC是否连接,并返回状态码
                     if result==0:
                         node.ipconnectivity=True
                     else:
                         node.ipconnectivity=False
-                        node.response+=response
+                        node.response+=response             #?
                 if self._matchtask("ipmi"):
-                    result,response=self.envchecker.checkbmcipmiaccount(node)
+                    result,response=self.envchecker.checkbmcipmiaccount(node)       #检查ipmi的账户
                     if result==0:
                         if re.search("error|fail", response) is None:
                             node.ipmiaccountstatus=True
@@ -550,11 +550,11 @@ class worker(threading.Thread):
                     debuginfo(node.response)
                 #pdb.set_trace()
                 if self._matchtask("businfo"):
-                    result, response=self.envchecker.accessbusinfo(node)
+                    result, response=self.envchecker.accessbusinfo(node)   #accdessbusinfo的用途不清楚
                     if result==0:
-                        collectbusinfo(node, response)
+                        collectbusinfo(node, response)          #采集businfo?
                 if self._matchtask("hwi"):
-                    result, response=self.envchecker.serverinfo(node)
+                    result, response=self.envchecker.serverinfo(node) #获取服务器信息?
                     if result==0:
                         node.hwi=response
 
