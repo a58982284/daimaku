@@ -22,7 +22,7 @@ def debuginfo(msg):     #定义一个debuginfo函数
         sys.stderr.write(str(datetime.now())+" : %s \n" % msg)  #重定向标准错误信息,将信息记录到文件中
 
 def info(msg):
-    sys.stderr.write(str(datetime.now())+" : %s \n" % msg)
+    sys.stderr.write(str(datetime.now())+" : %s \n" % msg)      #标准错误输出中写入
 
 def retrySimpleCmd(func):           #定义一个装饰器 给被装饰的函数增加功能
     def retried_func(*args, **kwargs):
@@ -169,7 +169,7 @@ class envchecker(object):                               #环境检查
         status, response=SimpleCmd(ipmicmd)     #同161行的意思一样
         return status, response
 
-    def _createscript(self, filename):
+    def _createscript(self, filename):  #生成一个脚本
         scriptstr=r"""#!/bin/bash
 
 iflist=$(ip a | grep -E "[0-9]+: eth[0-9]+:.*" | awk -F":| " '{print $3}')
@@ -376,7 +376,7 @@ done"""
         time.sleep(1)
         self.disableuid(blade)
 
-    def flashuidntime(self, blade, n):
+    def flashuidntime(self, blade, n):  #?
         for i in range(n):
             self.flashone(blade)
 
@@ -393,7 +393,7 @@ done"""
         blade.opstatus="successful"
         return 1, None
 
-    def poweron(self,blade):
+    def poweron(self,blade):        #上电
         toolname = self.gettoolname()
         cmdtpl = "{tool} {config} {shelf} {blade} {cmd}"
         OPE = cmdtpl.format(tool=toolname, config=self.configfile, shelf=blade.shelf_id, blade=blade.blade_id,
@@ -409,7 +409,7 @@ done"""
             raise ExecutionException(
                 "attemp to power on node shelf %s blade %s failed!" % (blade.shelf_id, blade.blade_id))
 
-    def poweroff(self,blade):
+    def poweroff(self,blade):   #下电
         toolname = self.gettoolname()
         cmdtpl = "{tool} {config} {shelf} {blade} {cmd}"
         OPE = cmdtpl.format(tool=toolname, config=self.configfile, shelf=blade.shelf_id, blade=blade.blade_id,
@@ -425,7 +425,7 @@ done"""
             raise ExecutionException(
                 "attemp to power off node shelf %s blade %s failed!" % (blade.shelf_id, blade.blade_id))
 
-    def pxeboot(self,blade):
+    def pxeboot(self,blade):    #PXEBOOT
         toolname = self.gettoolname()
         cmdtpl = "{tool} {config} {shelf} {blade} {cmd}"
         OPE = cmdtpl.format(tool=toolname, config=self.configfile, shelf=blade.shelf_id, blade=blade.blade_id,
@@ -441,7 +441,7 @@ done"""
             raise ExecutionException(
                 "attemp to pxeboot setup node shelf %s blade %s failed!" % (blade.shelf_id, blade.blade_id))
 
-    def generatenodeinfo(self,blade):
+    def generatenodeinfo(self,blade):   #生成node信息
         if self.checkexistence():
             toolname=self.gettoolname()
             cmdtpl = "{tool} {config} {shelf} {blade} {cmd}"
@@ -453,21 +453,21 @@ done"""
             if status == 0:
                 debuginfo("the response is %s" % (response))
                 with open('/var/lib/ericsson/node.info', 'a') as outf:
-                    outf.write("%d %d %s\n" % (blade.shelf_id, blade.blade_id, response))
+                    outf.write("%d %d %s\n" % (blade.shelf_id, blade.blade_id, response))#在node.info下写入这段字符串
                 blade.opstatus = "successful"
                 info("node shelf %s blade %s %s succeed!" % (blade.shelf_id, blade.blade_id, blade.optype))
                 return status, response
             else:
-                blade.opstatus = "failed"
+                blade.opstatus = "failed"   #异常信息
                 raise ExecutionException(
                     " node shelf %s blade %s failed!" % (blade.shelf_id, blade.blade_id))
 
-    def nicassignmentchk(self,blade):
+    def nicassignmentchk(self,blade):   #生成一个脚本,复制脚本到指定位置.执行,获得信息  网卡分配相关?
         blade.optype="nicassignmentchk"
         if self.checkexistence():
             NIP=self._gettargetnip(blade)
             # generate embeded script
-            scriptfilename = "/tmp/fetchPCIAddr.sh"
+            scriptfilename = "/tmp/fetchPCIAddr.sh" #生成一个脚本
             self._createscript(scriptfilename)
 
             # transfer script to target node
@@ -486,14 +486,14 @@ done"""
         return status, response
 
 
-class RemoteExecutionException(Exception):
+class RemoteExecutionException(Exception):  #异常
     def __init__(self, msg):
         self.msg = msg
 
     def __str__(self):
         return repr(self.msg)
 
-class ExecutionException(Exception):
+class ExecutionException(Exception):        #异常
     def __init__(self, msg):
         self.msg = msg
 
@@ -501,8 +501,8 @@ class ExecutionException(Exception):
         return repr(self.msg)
 
 
-def collectbusinfo(node, response):
-    strarr=response.splitlines()
+def collectbusinfo(node, response):     #采集bus信息 总线信息?
+    strarr=response.splitlines()        #按照行('\r', '\r\n', \n')分隔，返回一个包含各行作为元素的列表
     for item in strarr:
         reobj=re.search("([0-9:,a-z]+) (.*)", item)
         key=reobj.group(2)
@@ -628,12 +628,12 @@ class worker(threading.Thread):
         except Queue.Empty:
             debuginfo("ignore empty")
 
-    def run(self):
+    def run(self):          #重写了线程活动的方法,加了两个debuginfo
         debuginfo("Starting " + self.name)
         self.processing()
         debuginfo("Exiting " + self.name)
 
-    def showup(self, node):
+    def showup(self, node):     #打印信息
         print(("shelf %d, blade %d, bmc ip %s status: %s, ipmi status: %s, type: %s, operation stauts %s") % (
         node.shelf_id, node.blade_id, node.ip, node.ipconnectivity, node.ipmiaccountstatus, node.hwi, node.opstatus))
 
@@ -656,8 +656,8 @@ class worker(threading.Thread):
 #    def run(self):
 #        self.showup()
 
-def searchrolename(blade, businfo):
-    i=0
+def searchrolename(blade, businfo):     #查找chr 的角色名称
+    i=0                                 #i=0 i+=1
     for ctrl in blade.control:
         if re.search(businfo,ctrl):
             return "control%d" % i
@@ -674,11 +674,11 @@ def searchrolename(blade, businfo):
         i+=1
     raise InfoNotFoundException("unable to find role defined for the pci bus address %s. " % businfo)
 
-def searchBusInfoByRolename(blade, rolename):
+def searchBusInfoByRolename(blade, rolename):   #通过角色名称查询businfo
     if re.search("control([0-1])", rolename):
         reobj=re.search("control([0-1])", rolename)
-        ctrl=blade.control[int(reobj.group(1))]
-        for key, value in blade.businfo.iteritems():
+        ctrl=blade.control[int(reobj.group(1))]     #group(1)表示的是获取第一组，也就是第一个括号中的正则出来的字符串，
+        for key, value in blade.businfo.iteritems():#返回一个迭代器对象
             if ctrl==key:
                 return key, value
     if re.search("data", rolename):
@@ -698,7 +698,7 @@ def searchBusInfoByRolename(blade, rolename):
                                 (rolename, blade.shelf_id, blade.blade_id))
 
 
-def showStatus(envchecker):
+def showStatus(envchecker):     #状况展示
 
     print("============ final state review ==============")
 
