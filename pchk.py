@@ -50,7 +50,7 @@ def retrySimpleCmd(func):           #定义一个装饰器 给被装饰的函数
 
 @retrySimpleCmd
 def SimpleCmd(CmdStr):  #什么是CmdStr?  是接受checkbmcipconnectivity函数的ippingcmd作为参数
-    status=0            #这个值的目的是什么?
+    status=0            #这个值的目的是什么?是不是状态码?
     output=None
 
     if not sim:     #if not False
@@ -94,7 +94,7 @@ def createNodesArray(config="/mnt/cee_config/config.yaml", tgtnics=None):    #�
         config_yaml_path=config).resource_cfg)      #单例模式,返回的是将config赋值给config.yaml路径的resoursce_cfg属性,这个真不知道返回的是啥
     nodes=[]                                        #设置一个空列表nodes
     for shelf in res_cfg.shelves:                  #循环遍历res_cfg.shelves ,返回nodes
-        for blade in shelf.blades:                 #循环遍历shelf.blades
+        for blade in shelf.blades:                 #循环遍历shelf.blades(机架上的节点?)
             node=nodestatus()
             node.blade=blade
             node.shelf=shelf
@@ -123,7 +123,7 @@ class InfoNotFoundException(Exception):         #信息没找到的例外情况
     def __str__(self):
         return repr(self.msg)
 
-class TransferException(Exception):             #各种能够错误信息的定义
+class TransferException(Exception):             #各种错误信息的定义
     def __init__(self, msg):
         self.msg = msg
 
@@ -184,12 +184,12 @@ done"""
         with open(filename, "w") as text_file:              #打开文件
             text_file.write(scriptstr)                       #写入scriptstr
 
-    def gettoolname(self):                              #?
-        if re.search("runipmicommand", self.tool):  #re.search会在给定字符串中寻找第一个匹配给定正则表达式的子字符串。函数的返回值：如果查找到则返回查找到的值，否则返回为None。
-            if os.access(self.tool, os.X_OK):       #self.tool="/usr/bin/hwres"
+    def gettoolname(self):
+        if re.search("runipmicommand", self.tool):  #re.search会在"/usr/bin/hwres"中寻找第一个匹配给定正则表达式的子字符串。函数的返回值：如果查找到则返回查找到的值，否则返回为None。"/usr/bin/hwres"
+            if os.access(self.tool, os.X_OK):       #self.tool="/usr/bin/hwres"   测试self.tool是否可执行,如果允许访问返回 True , 否则返回False
                 return self.tool
             else:
-                return "python "+self.tool
+                return "python "+self.tool      #返回/usr/bin/hwres/python  ?
         return self.tool
 
     def _gettargetnip(self,blade):      #定义一个私有方法 获得目标的nip?SN?
@@ -278,7 +278,7 @@ done"""
                                                (nicname, blade.shelf_id, blade.blade_id))
             else:
                 blade.opstatus="successful"
-                info("nic %s (%s) on blade shelf %s blade %s now enabled" %     #shelf_id是啥查一下
+                info("nic %s (%s) on blade shelf %s blade %s now enabled" %     #shelf_id 机架ID
                      (nic, nicname, blade.shelf_id, blade.blade_id))
                 return status, response
 
@@ -509,7 +509,7 @@ def collectbusinfo(node, response):     #采集bus信息 总线信息?
         value=reobj.group(1)
         node.businfo[key]=value
 
-class worker(threading.Thread):
+class worker(threading.Thread): #开始多线程
     exitFlag=0
     def __init__(self, threadid, name, envchecker, qin, qout, tasklist):
         threading.Thread.__init__(self)
@@ -556,75 +556,75 @@ class worker(threading.Thread):
                 if self._matchtask("hwi"):
                     result, response=self.envchecker.serverinfo(node) #获取服务器信息?
                     if result==0:
-                        node.hwi=response
+                        node.hwi=response       #node的hwi属性是self.envchecker.serverinfo(node)
 
-                if self._matchtask("enablenic"):
+                if self._matchtask("enablenic"):        #激活网卡?
                     result, response=self.envchecker.enablenic(node)
                     if result==0:
                         node.opstatus="latest enablenic operation succeeded. "
                         info("all nic %s in blade shelf %s blade %s are enabled. " % (str(node.tgtnics), node.shelf_id, node.blade_id))
 
-                if self._matchtask("disablenic"):
+                if self._matchtask("disablenic"):   #关闭网卡
                     result, response=self.envchecker.disablenic(node)
                     if result==0:
                         node.opstatus="latest disablenic operation succeeded. "
                         info("all nic %s in blade shelf %s blade %s are disabled. " % (str(node.tgtnics), node.shelf_id, node.blade_id))
 
-                if self._matchtask("flashnic"):
+                if self._matchtask("flashnic"):     #刷新网卡
                     result, response=self.envchecker.flashnic(node)
                     if result==0:
                         node.opstatus="latest flashnic operation succeeded. "
                         info("all nic %s in blade shelf %s blade %s are flashing. " % (str(node.tgtnics), node.shelf_id, node.blade_id))
 
-                if self._matchtask("enableuid"):
+                if self._matchtask("enableuid"):    #激活uid,身份?
                     result, response=self.envchecker.enableuid(node)
                     if result==0:
                         node.opstatus="latest enableuid operation succeeded. "
                         info("the uid locator led in blade shelf %s blade %s is light up. " % (node.shelf_id, node.blade_id))
 
-                if self._matchtask("disableuid"):
+                if self._matchtask("disableuid"):   #关闭uid?
                     result, response=self.envchecker.disableuid(node)
                     if result==0:
                         node.opstatus="latest disableuid operation succeeded. "
                         info("the uid locator led in blade shelf %s blade %s is black out. " % (node.shelf_id, node.blade_id))
 
-                if self._matchtask("flashuid"):
+                if self._matchtask("flashuid"): #刷新uid?
                     result, response=self.envchecker.flashuid(node)
                     if result==0:
                         node.opstatus="latest flashuid operation succeeded. "
                         info("the uid locator led in blade shelf %s blade %s are flashing. " % (node.shelf_id, node.blade_id))
 
-                if self._matchtask("poweron"):
+                if self._matchtask("poweron"):  #上电
                     result, response=self.envchecker.poweron(node)
                     if result==0:
                         node.opstatus="latest poweron operation succeeded. "
                         info("completed shelf %s blade %s power on. " % (node.shelf_id, node.blade_id))
 
-                if self._matchtask("poweroff"):
+                if self._matchtask("poweroff"): #下电
                     result, response=self.envchecker.poweroff(node)
                     if result==0:
                         node.opstatus="latest poweroff operation succeeded. "
                         info("completed shelf %s blade %s power off. " % (node.shelf_id, node.blade_id))
 
-                if self._matchtask("pxeboot"):
+                if self._matchtask("pxeboot"):  #pxeboot
                     result, response=self.envchecker.pxeboot(node)
                     if result==0:
                         node.opstatus="latest pxeboot setup operation succeeded. "
                         info("completed shelf %s blade %s pxeboot setup. " % (node.shelf_id, node.blade_id))
 
-                if self._matchtask("generatenodeinfo"):
+                if self._matchtask("generatenodeinfo"): #生成node信息
                     result,response=self.envchecker.generatenodeinfo(node)
                     if result==0:
                         node.opstatus="latest generatenodeinfo operation succeeded. "
                         info(" completed shelf %s blade %s nodeinfo creation. " % ( node.shelf_id, node.blade_id))
 
-                if self._matchtask("nicassignmentchk"):
+                if self._matchtask("nicassignmentchk"): #网卡分配相关信息?
                     result,response=self.envchecker.nicassignmentchk(node)
                     if result==0:
                         node.opstatus="nicassignmentchk operation succeeded. "
                         info(" completed shelf %s blade %s nicassignmentchk creation. " % ( node.shelf_id, node.blade_id))
 
-                self.showup(node)
+                self.showup(node)       #打印信息
         except Queue.Empty:
             debuginfo("ignore empty")
 
@@ -681,7 +681,7 @@ def searchBusInfoByRolename(blade, rolename):   #通过角色名称查询businfo
         for key, value in blade.businfo.iteritems():#返回一个迭代器对象
             if ctrl==key:
                 return key, value
-    if re.search("data", rolename):
+    if re.search("data", rolename): #正则匹配 ,返回的是一个匹配对象
         reobj = re.search("data([0-1])", rolename)
         da = blade.data[int(reobj.group(1))]
         for key, value in blade.businfo.iteritems():
