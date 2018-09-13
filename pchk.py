@@ -51,7 +51,7 @@ def retrySimpleCmd(func):           #定义一个装饰器 给被装饰的函数
 @retrySimpleCmd
 def SimpleCmd(CmdStr):  #什么是CmdStr?  是接受checkbmcipconnectivity函数的ippingcmd作为参数
     status=0            #这个值的目的是什么?是不是状态码?
-    output=None
+    output=None         #返回值的初始化
 
     if not sim:     #if not False
         status, output = commands.getstatusoutput(CmdStr)   #获得到程序执行的返回值(状态码)和输出 用os.popen()执行命令CmdStr(下面的函数会传递过来), 然后返回两个元素的status, result, 这样返回结果里面就会包含标准输出和标准错误.
@@ -93,8 +93,8 @@ def createNodesArray(config="/mnt/cee_config/config.yaml", tgtnics=None):    #�
     res_cfg = (ConfigResourceManager.get_instance(
         config_yaml_path=config).resource_cfg)      #单例模式,返回的是将config赋值给config.yaml路径的resoursce_cfg属性,这个真不知道返回的是啥
     nodes=[]                                        #设置一个空列表nodes
-    for shelf in res_cfg.shelves:                  #循环遍历res_cfg.shelves ,返回nodes
-        for blade in shelf.blades:                 #循环遍历shelf.blades(机架上的节点?)
+    for shelf in res_cfg.shelves:                  #循环遍历res_cfg.shelves ,返回nodes  加载conf.yaml后是json shelves是数组
+        for blade in shelf.blades:                 #循环遍历shelf.blades(机架上的节点?)  抽取数据从yaml里
             node=nodestatus()
             node.blade=blade
             node.shelf=shelf
@@ -189,10 +189,10 @@ done"""
             if os.access(self.tool, os.X_OK):       #self.tool="/usr/bin/hwres"   测试self.tool是否可执行,如果允许访问返回 True , 否则返回False
                 return self.tool
             else:
-                return "python "+self.tool      #返回/usr/bin/hwres/python  ?
+                return "python "+self.tool      #返回/usr/bin/hwres/  尝试用python运行这个脚本
         return self.tool
 
-    def _gettargetnip(self,blade):      #定义一个私有方法 获得目标的nip?SN?
+    def _gettargetnip(self,blade):      #定义一个私有方法 获得目标的nip?SN?   获得序列号
         if self.checkexistence():       #ture or false
             # get serial number from shelf id and blade id
             toolname=self.gettoolname() #拿到一个文件名
@@ -232,7 +232,7 @@ done"""
             if status!=0:                               #出问题的情况
                 raise TransferException("File transferring has problem")
 
-            # execute the script to fetch specified info       #执行脚本,取得特殊的数据?这个脚本的用途是什么呢?
+            # execute the script to fetch specified info       #执行脚本,取得特殊的数据?这个脚本的用途是什么呢?  #"/tmp/fetchPCIAddr.sh"获得PCIaddr但是我们没有这个脚本
             remoteexeccmdtpl="ssh -q {ip} {cmd}"            #远程登录,执行ssh -q NIP bash /tmp/fetchPCIAddr.sh
             remotecmd=remoteexeccmdtpl.format(ip=NIP,cmd=("bash %s" % scriptfilename))
             status, response=SimpleCmd(remotecmd)       #交给simplecmd去执行,并返回状态码
@@ -240,7 +240,8 @@ done"""
             raise DependencyNotFoundException("system is not dpia patched, this tool require system to be dpia patched.")   #异常状况
         return status, response
 
-    def serverinfo(self,blade):                 #获取服务器信息?
+    def serverinfo(self,blade):                 #获取服务器信息?   找ipmi 的ip用户名密码 让用户使用cmdtpl
+
         toolname=self.gettoolname()             #187-193行
         if self.checkexistence():               #ture or false 如果文件存在的话
             cmdtpl="{tool} {config} {shelf} {blade} {cmd}"  #组成命令 ,config指向.yaml
@@ -258,7 +259,7 @@ done"""
 
 
     def _getnicname(self, blade, busid):#busid?即可以是物理总线（如PCI、I2C总线）的抽象，也可以是出于设备驱动模型架构需要而定义的虚拟的“platform”总线。一个符合Linux设备驱动模型的device或device_driver必须挂靠在一个bus上，无论这个bus是物理的还是虚拟的
-        return blade.businfo[busid]     #
+        return blade.businfo[busid]     #取得某一台机器上的某一个pci地址上的网卡叫什么名字
 
     def disablenic(self,blade):         #禁掉网卡?
         status, response=self.accessbusinfo(blade)#accessbusinfo的用途不清楚
@@ -268,7 +269,7 @@ done"""
 
         for nic in blade.tgtnics:               #循环遍历blade.tgtnics 猜是网卡信息?
             nicname=self._getnicname(blade,nic)
-            cmdtpl="ssh {ip} ip link dev {nic} down"
+            cmdtpl="ssh {ip} ip link dev {nic} down"        #关闭网卡的命令
             remotecmd=cmdtpl.format(ip=NIP, nic=nicname)    #组合命令
             blade.optype="disablenic"
             status, response=SimpleCmd(remotecmd)
@@ -290,7 +291,7 @@ done"""
         blade.optype="enablenic"
         for nic in blade.tgtnics:
             nicname = self._getnicname(blade, nic)
-            cmdtpl = "ssh {ip} ip link dev {nic} up"
+            cmdtpl = "ssh {ip} ip link dev {nic} up"    #激活网卡的命令
             remotecmd = cmdtpl.format(ip=NIP, nic=nicname)
             status, response = SimpleCmd(remotecmd)
             if status != 0:
@@ -303,7 +304,7 @@ done"""
                      (nic, nicname, blade.shelf_id, blade.blade_id))
                 return status, response
 
-    def flashnic(self,blade):       #刷新网卡?
+    def flashnic(self,blade):       #刷新网卡?  重启网卡
         status, response = self.accessbusinfo(blade)
         if status == 0:
             collectbusinfo(blade, response)
@@ -320,7 +321,7 @@ done"""
         blade.opstatus="successful"
         return True, None
 
-    def enableuid(self,blade, timer):   #激活uid uid是啥
+    def enableuid(self,blade, timer):   #激活uid uid是啥 enable一个blade
         cmdtpl = "ipmitool -H {ip} -U {user} -P {passwd} -I lanplus {cmd}"
         #chassis identify on
         oncmd='chassis identify '+str(timer)        #这个命令不清楚什么意思
@@ -376,7 +377,7 @@ done"""
         time.sleep(1)
         self.disableuid(blade)
 
-    def flashuidntime(self, blade, n):  #?
+    def flashuidntime(self, blade, n):  #闪灯
         for i in range(n):
             self.flashone(blade)
 
@@ -441,7 +442,7 @@ done"""
             raise ExecutionException(
                 "attemp to pxeboot setup node shelf %s blade %s failed!" % (blade.shelf_id, blade.blade_id))
 
-    def generatenodeinfo(self,blade):   #生成node信息
+    def generatenodeinfo(self,blade):   #生成node信息  取node的序列号
         if self.checkexistence():
             toolname=self.gettoolname()
             cmdtpl = "{tool} {config} {shelf} {blade} {cmd}"
@@ -462,7 +463,7 @@ done"""
                 raise ExecutionException(
                     " node shelf %s blade %s failed!" % (blade.shelf_id, blade.blade_id))
 
-    def nicassignmentchk(self,blade):   #生成一个脚本,复制脚本到指定位置.执行,获得信息  网卡分配相关?
+    def nicassignmentchk(self,blade):   #生成一个脚本,复制脚本到指定位置.执行,获得信息  网卡分配相关?  取得PCI地址
         blade.optype="nicassignmentchk"
         if self.checkexistence():
             NIP=self._gettargetnip(blade)
@@ -501,7 +502,7 @@ class ExecutionException(Exception):        #异常
         return repr(self.msg)
 
 
-def collectbusinfo(node, response):     #采集bus信息 总线信息?
+def collectbusinfo(node, response):     #采集bus信息 总线信息?      #猜测是pciaddr对应的网卡信息
     strarr=response.splitlines()        #按照行('\r', '\r\n', \n')分隔，返回一个包含各行作为元素的列表
     for item in strarr:
         reobj=re.search("([0-9:,a-z]+) (.*)", item)
@@ -656,7 +657,7 @@ class worker(threading.Thread): #开始多线程
 #    def run(self):
 #        self.showup()
 
-def searchrolename(blade, businfo):     #查找chr 的角色名称
+def searchrolename(blade, businfo):     #查找角色名称
     i=0                                 #i=0 i+=1
     for ctrl in blade.control:
         if re.search(businfo,ctrl):
@@ -674,7 +675,7 @@ def searchrolename(blade, businfo):     #查找chr 的角色名称
         i+=1
     raise InfoNotFoundException("unable to find role defined for the pci bus address %s. " % businfo)
 
-def searchBusInfoByRolename(blade, rolename):   #通过角色名称查询businfo
+def searchBusInfoByRolename(blade, rolename):   #通过角色名称查询businfo rolename ctl0 /ctl1
     if re.search("control([0-1])", rolename):
         reobj=re.search("control([0-1])", rolename)
         ctrl=blade.control[int(reobj.group(1))]     #group(1)表示的是获取第一组，也就是第一个括号中的正则出来的字符串，
